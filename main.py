@@ -1094,7 +1094,6 @@ class MainWindow(QMainWindow):
             self.console_log.append(f"\n❌ [TERMINAL_CRASH] CORRUPTION DETECTED IN PIPELINE EXPORT: {message}")
 
 if __name__ == "__main__":
-    # 🟢 កំណត់ AppUserModelID ដើម្បីឱ្យ Windows បង្ហាញ Icon ផ្ទាល់ខ្លួននៅលើ Taskbar
     try:
         import ctypes
         myappid = 'akdigital.prostudio.version.1.0' 
@@ -1103,19 +1102,14 @@ if __name__ == "__main__":
         pass
 
     app = QApplication(sys.argv)
-    
-    # កំណត់ពុម្ពអក្សរ Kantumruy Pro 9 ដូចដើមរបស់បង
     font = QFont("Kantumruy Pro", 9)
     app.setFont(font)
     
     window = MainWindow()
-    
-    # 🟢 ប្រព័ន្ធត្រួតពិនិត្យការអាប់ដេត (Auto-Update Engine)
     def check_for_updates():
         window.updater = AutoUpdater()
         
         def on_update_found(latest_ver, url):
-            # ប្តូរ url ទៅជា Link Raw ត្រឹមត្រូវរបស់បង Vathana ករណីដាក់ឈ្មោះខុសក្នុង JSON
             correct_raw_url = "https://raw.githubusercontent.com/Vathana-devkh/AK-Digital-Tool-PRO-STUDIO/main/main.py"
             
             reply = QMessageBox.question(
@@ -1133,8 +1127,6 @@ if __name__ == "__main__":
                     
         window.updater.update_available.connect(on_update_found)
         window.updater.start()
-
-    # ហៅឱ្យដំណើរការពិនិត្យ Update បន្ទាប់ពីបើកកម្មវិធីបាន ២ វិនាទី
     QTimer.singleShot(2000, check_for_updates)
 
     # កំណត់ Icon ឱ្យ Window & Taskbar
