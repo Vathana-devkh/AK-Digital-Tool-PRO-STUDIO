@@ -874,7 +874,7 @@ class MainWindow(QMainWindow):
         QMessageBox.information(self, "ជំនាន់របស់កម្មវិធី (App Version)", "Core Engine Architecture: Premium Core Alpha 2026\nApplication Version: 2.5.0\nFramework Engine: PySide6 (Qt for Python)")
 
     def show_about_admin(self):
-        QMessageBox.information(self, "ទំនាក់ទំនងមកកាន់ Admin", "Lead Software Developer / System Architect: Noy Vathana\nTelegram System Route Support: @vathana_noy\nProject Assignment: Premium Tool Loop Production Studio")
+        QMessageBox.information(self, "ទំនាក់ទំនងមកកាន់ Admin", "Software Developer / System Architect: Noy Vathana\nTelegram System Route Support: https://t.me/vathana_trader\nFunder of AK Digital Tool PRO STUDIO")
 
     def apply_shadow(self, widget, color=QColor(0,0,0,100)):
         shadow = QGraphicsDropShadowEffect()
