@@ -27,14 +27,22 @@ CURRENT_VERSION = "1.0.0"
 VERSION_URL = "https://raw.githubusercontent.com/Vathana-devkh/AK-Digital-Tool-PRO-STUDIO/main/version.json"
 
 # =====================================================================
-# helper: ប្រព័ន្ធទាញយក ICON .PNG (SAFE ICON LOADING ENGINE)
+# helper: ប្រព័ន្ធទាញយក ICON .PNG (គាំទ្រទាំង Local និង .EXE)
 # =====================================================================
 def get_studio_icon(icon_name, fallback_emoji=""):
-    current_dir = os.path.dirname(os.path.abspath(__file__))
-    icon_path = os.path.join(current_dir, "icons", f"{icon_name}.png")
+    # 🛡️ បើដំណើរការជា .EXE គឺទាញផ្លូវពី _MEIPASS បើ Run ធម្មតាគឺយកតាម current_dir
+    if hasattr(sys, '_MEIPASS'):
+        base_path = sys._MEIPASS
+    else:
+        base_path = os.path.dirname(os.path.abspath(__file__))
+        
+    icon_path = os.path.join(base_path, "icons", f"{icon_name}.png")
+    
     if os.path.exists(icon_path):
         return QIcon(icon_path)
-    return QIcon() 
+        
+    logging.warning(f"⚠️ Icon not found at: {icon_path}")
+    return QIcon()
 
 # =====================================================================
 # 1. ADVANCED ALPHA MASK COMPOSITING PIPELINE ENGINE (MAINTAINED)
