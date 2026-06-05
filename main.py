@@ -636,13 +636,13 @@ class MainWindow(QMainWindow):
         self.audio_box = QWidget()
         audio_layout = QVBoxLayout(self.audio_box)
         audio_layout.setContentsMargins(14, 14, 14, 14)
-        audio_layout.setSpacing(6)
+        audio_layout.setSpacing(8)
         
         self.lbl_sec_audio = QLabel("🛜 AUDIO MIX LAYER")
         audio_layout.addWidget(self.lbl_sec_audio)
         
         audio_split_layout = QHBoxLayout()
-        audio_split_layout.setSpacing(14)
+        audio_split_layout.setSpacing(8)
         
         audio_left_col = QVBoxLayout()
         audio_left_col.setSpacing(15)
@@ -753,7 +753,7 @@ class MainWindow(QMainWindow):
 
         self.loop_group.buttons()[0].setChecked(True)
         self.res_group.buttons()[2].setChecked(True)
-
+        
         # =========================================================
         # 📁 OUTPUT DIRECTORY PIPELINE CONFIG
         # =========================================================
@@ -948,7 +948,7 @@ class MainWindow(QMainWindow):
         QMessageBox.information(self, "របៀបប្រើប្រាស់ (User Guide)", "១. ទាញទម្លាក់វីដេអូ ឬ Alpha Mask ចូលទៅក្នុង Lanes នីមួយៗ\n២. កំណត់ម៉ោងលេង (Playtime Vector) និងទំហំ (Resolution)\n៣. បញ្ចូលសំឡេងផ្ទៃក្រោយ ឬសំឡេងបរិយាកាស (Optional)\n៤. ចុចប៊ូតុង INITIALIZE SYSTEM CORE ដើម្បីចាប់ផ្ដើមផលិត។")
 
     def show_about_version(self):
-        QMessageBox.information(self, "ជំនាន់របស់កម្មវិធី (App Version)", "Core Engine Architecture: Premium Core Alpha 2026\nApplication Version: 2.5.0\nFramework Engine: PySide6 (Qt for Python)")
+        QMessageBox.information(self, "ជំនាន់របស់កម្មវិធី (App Version)", "Name Application: AK Digital Tool PRO STUDIO\nApplication Version: 1.1.0\nBuild Date: 2024-06-15")
 
     def show_about_admin(self):
         QMessageBox.information(self, "ទំនាក់ទំនងមកកាន់ Admin", "Software Developer / System Architect: Noy Vathana\nTelegram System Route Support: https://t.me/vathana_trader\nFunder of AK Digital Tool PRO STUDIO")
@@ -991,7 +991,7 @@ class MainWindow(QMainWindow):
             self.btn_theme_toggle.setText("DARK MODE")
             self.btn_theme_toggle.setIcon(get_studio_icon("dark_mode"))
             self.header_container.setStyleSheet("QWidget#HeaderContainer { background-color: transparent; border: none; }")
-            self.lbl_main_title.setText("<div><div style='font-size:20px; font-weight:900; color:#1F2937; font-family: \"Kantumruy Pro\";'>AI VIDEO LOOP GENERATOR</div></div>")
+            self.lbl_main_title.setText("<div><div style='font-size:20px; font-weight:900; color:#1F2937; font-family: \"Kantumruy Pro\";'>AK Digital Tool PRO STUDIO</div></div>")
             self.lbl_gpu.setStyleSheet("background-color: rgba(0,122,255,0.08); border: 1px solid #007AFF; border-radius: 6px; padding: 3px 8px; color: #007AFF; font-size: 9px; font-weight: bold;")
             self.lbl_engine.setStyleSheet("background-color: rgba(191,90,242,0.08); border: 1px solid #BF5AF2; border-radius: 6px; padding: 3px 8px; color: #BF5AF2; font-size: 9px; font-weight: bold;")
             
