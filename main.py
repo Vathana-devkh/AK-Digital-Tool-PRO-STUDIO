@@ -459,15 +459,46 @@ class AutoUpdater(QThread):
 
 def execute_update(download_url):
     try:
-        current_file = os.path.abspath(__file__)
+        # 🎯 រកផ្លូវពិតប្រាកដរបស់ឯកសារ .exe ដែលកំពុងបើករត់
+        current_exe = os.path.abspath(sys.argv[0])
+        exe_dir = os.path.dirname(current_exe)
+        
+        # បើ User រត់ជាកូដ .py ធម្មតា (មិនមែន .exe ទេ) ឱ្យទាញយកជា file main.py ធម្មតា
+        if not current_exe.endswith('.exe'):
+            req = urllib.request.Request("https://raw.githubusercontent.com/Vathana-devkh/AK-Digital-Tool-PRO-STUDIO/refs/heads/main/main.py", headers={'User-Agent': 'Mozilla/5.0'})
+            with urllib.request.urlopen(req, timeout=15) as response:
+                with open(current_exe, 'wb') as f:
+                    f.write(response.read())
+            return True
+
+        temp_exe = os.path.join(exe_dir, "main_new.exe")
+        
+        # ១. ទាញយកឯកសារ main.exe ជំនាន់ថ្មីសន្លាងពី GitHub មកទុកជាបណ្ដោះអាសន្ន
         req = urllib.request.Request(download_url, headers={'User-Agent': 'Mozilla/5.0'})
-        with urllib.request.urlopen(req, timeout=10) as response:
-            new_code = response.read()
-            with open(current_file, 'wb') as f:
-                f.write(new_code)
+        with urllib.request.urlopen(req, timeout=60) as response:
+            with open(temp_exe, 'wb') as f:
+                f.write(response.read())
+                
+        # ២. បង្កើត Script updater.bat ទៅសម្លាប់អាចាស់ លុបចោល រួចប្តូរឈ្មោះអាថ្មីជំនួស និងបើកឡើងវិញ (Auto Reboot)
+        bat_path = os.path.join(exe_dir, "updater.bat")
+        exe_name = os.path.basename(current_exe)
+        with open(bat_path, "w", encoding="cp1252") as f:
+            f.write(f"""@echo off
+:loop
+taskkill /IM "{exe_name}" /F >nul 2>&1
+timeout /t 1 /nobreak >nul
+del /f /q "{current_exe}"
+if exist "{current_exe}" goto loop
+move /y "{temp_exe}" "{current_exe}"
+start "" "{current_exe}"
+del "%~f0"
+""")
+        
+        # ៣. រត់ឯកសារ .bat background ស្ងាត់ៗ រួចបិទកម្មវិធីខ្លួនឯងភ្លាម
+        subprocess.Popen([bat_path], shell=True, creationflags=subprocess.CREATE_NO_WINDOW)
         return True
     except Exception as e:
-        print(f"ការទាញយកបរាជ័យ: {e}")
+        logging.error(f"ការអាប់ដេត Binary .EXE បរាជ័យ: {e}")
         return False
 # =====================================================================
 # 4. MAIN INTERFACE WINDOW MODULE (LIGHT DEFAULT, NAV BAR, FIXED EXPORT)
@@ -872,16 +903,10 @@ class MainWindow(QMainWindow):
             self.console_log.append("⚙️ [SYSTEM] FFmpeg Command configurations updated successfully.")
 
     def trigger_github_update(self):
-        # ១. បង្ហាញអក្សរនៅលើ Status Bar ខាងក្រោមកម្មវិធីឱ្យ User ដឹងថា កំពុងស្កែន
         self.statusBar().showMessage("កំពុងពិនិត្យមើលកំណែទម្រង់ថ្មីពី GitHub...", 5000)
-        
-        # ២. បង្កើត Thread សម្រាប់ទៅអានទិន្នន័យពី GitHub background
         self.updater = AutoUpdater()
         
-        # ករណី៖ រកឃើញ Version ថ្មីខ្ពស់ជាងក្នុងម៉ាស៊ីន
         def on_update_found(latest_ver, url):
-            correct_raw_url = "https://raw.githubusercontent.com/Vathana-devkh/AK-Digital-Tool-PRO-STUDIO/refs/heads/main/main.py"
-            
             reply = QMessageBox.question(
                 self, 
                 "រកឃើញកំណែទម្រង់ថ្មី!", 
@@ -889,24 +914,20 @@ class MainWindow(QMainWindow):
                 QMessageBox.Yes | QMessageBox.No
             )
             if reply == QMessageBox.Yes:
-                self.statusBar().showMessage("កំពុងទាញយកកូដថ្មីពី GitHub សូមរង់ចាំ...", 10000)
-                if execute_update(correct_raw_url):
-                    QMessageBox.information(self, "ជោគជ័យ", "ការអាប់ដេតបានជោគជ័យ! កម្មវិធីនឹងបិទដើម្បីអនុវត្តកូដថ្មី។")
-                    sys.exit(0) # បិទកម្មវិធីភ្លាម
+                self.statusBar().showMessage("កំពុងទាញយកឯកសារកែប្រែថ្មីពី GitHub សូមរង់ចាំ...", 15000)
+                if execute_update(url):
+                    QMessageBox.information(self, "ជោគជ័យ", "ការអាប់ដេតបានជោគជ័យ! កម្មវិធីនឹងបិទដើម្បីដំឡើងជំនាន់ថ្មីស្វ័យប្រវត្ត។")
+                    sys.exit(0) # បិទខ្លួនឯង ដើម្បីឱ្យ file .bat ធ្វើការ Reboot បើកឡើងវិញ
                 else:
-                    QMessageBox.critical(self, "កំហុស", "ការទាញយកកូដថ្មីមានបញ្ហា ឬការសរសេរឯកសារបរាជ័យ។")
+                    QMessageBox.critical(self, "កំហុស", "ការទាញយកកូដថ្មីមានបញ្ហា។")
                     self.statusBar().clearMessage()
-        
-        # ករណី៖ ពិនិត្យទៅឃើញកូដក្នុងម៉ាស៊ីនជា Version ចុងក្រោយបង្អស់ហើយ (គ្មាន Update ទេ)
+                    
         def on_no_update():
             QMessageBox.information(self, "ព័ត៌មាន", f"កម្មវិធីរបស់អ្នកជាកំណែទម្រង់ចុងក្រោយបង្អស់ហើយ ({CURRENT_VERSION})។")
             self.statusBar().showMessage("កម្មវិធីជាជំនាន់ចុងក្រោយបង្អស់ហើយ។", 3000)
 
-        # ភ្ជាប់ Signals ទៅកាន់ Functions ខាងលើ
         self.updater.update_available.connect(on_update_found)
         self.updater.no_update_found.connect(on_no_update)
-        
-        # ចាប់ផ្ដើមដំណើរការស្កែន
         self.updater.start()
 
     def show_about_guide(self):
