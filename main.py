@@ -7,6 +7,8 @@ import tempfile
 from pathlib import Path
 import cv2
 import ctypes
+import urllib.request
+from PySide6.QtWidgets import QMessageBox
 from PySide6.QtCore import Qt, QThread, Signal, QTimer, QTime, QSize
 from PySide6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
@@ -18,6 +20,11 @@ from PySide6.QtWidgets import (
 from PySide6.QtGui import QDragEnterEvent, QDropEvent, QColor, QPixmap, QImage, QFont, QAction, QIcon
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+
+CURRENT_VERSION = "1.0.0" 
+
+# 🟢 នេះជា Link បែប Raw ដែលបង្កើតចេញពី GitHub របស់បង Vathana ដោយស្វ័យប្រវត្ត
+VERSION_URL = "https://raw.githubusercontent.com/Vathana-devkh/AK-Digital-Tool-PRO-STUDIO/main/version.json"
 
 # =====================================================================
 # helper: ប្រព័ន្ធទាញយក ICON .PNG (SAFE ICON LOADING ENGINE)
@@ -419,6 +426,40 @@ class FfmpegSettingsDialog(QDialog):
         h_btn.addWidget(btn_save)
         layout.addLayout(h_btn)
 
+# =====================================================================
+# 5. AUTOMATIC UPDATE CHECKER & EXECUTOR (GITHUB-BASED VERSION CONTROL)
+# =====================================================================
+class AutoUpdater(QThread):
+    update_available = Signal(str, str) # បញ្ជូន (latest_version, download_url)
+    
+    def run(self):
+        try:
+            # ទាញយកទិន្នន័យ JSON ពី GitHub មកពិនិត្យ
+            req = urllib.request.Request(VERSION_URL, headers={'User-Agent': 'Mozilla/5.0'})
+            with urllib.request.urlopen(req, timeout=5) as response:
+                data = json.loads(response.read().decode('utf-8'))
+                latest_version = data.get("version", "1.0.0") # យកតាមសោរ "version" ក្នុង JSON របស់បង
+                download_url = data.get("download_url", "")
+                
+                # ប្រៀបធៀប Version បើថ្មីជាង នឹងប្រាប់ទៅកម្មវិធី
+                if latest_version > CURRENT_VERSION:
+                    self.update_available.emit(latest_version, download_url)
+        except Exception as e:
+            print(f"ពិនិត្យការអាប់ដេតមិនជោគជ័យ: {e}")
+
+def execute_update(download_url):
+    try:
+        # ទាញយកកូដថ្មីមកសរសេរជាន់លើ file main.py ដើម
+        current_file = os.path.abspath(__file__)
+        req = urllib.request.Request(download_url, headers={'User-Agent': 'Mozilla/5.0'})
+        with urllib.request.urlopen(req, timeout=10) as response:
+            new_code = response.read()
+            with open(current_file, 'wb') as f:
+                f.write(new_code)
+        return True
+    except Exception as e:
+        print(f"ការទាញយកបរាជ័យ: {e}")
+        return False
 # =====================================================================
 # 4. MAIN INTERFACE WINDOW MODULE (LIGHT DEFAULT, NAV BAR, FIXED EXPORT)
 # =====================================================================
@@ -1053,7 +1094,7 @@ class MainWindow(QMainWindow):
             self.console_log.append(f"\n❌ [TERMINAL_CRASH] CORRUPTION DETECTED IN PIPELINE EXPORT: {message}")
 
 if __name__ == "__main__":
-    # 🟢 បន្ថែមការកំណត់ AppUserModelID ដើម្បីឱ្យ Windows មិនខ្ចី Icon លំនាំដើមរបស់ Python មកបង្ហាញ
+    # 🟢 កំណត់ AppUserModelID ដើម្បីឱ្យ Windows បង្ហាញ Icon ផ្ទាល់ខ្លួននៅលើ Taskbar
     try:
         import ctypes
         myappid = 'akdigital.prostudio.version.1.0' 
@@ -1062,13 +1103,41 @@ if __name__ == "__main__":
         pass
 
     app = QApplication(sys.argv)
+    
+    # កំណត់ពុម្ពអក្សរ Kantumruy Pro 9 ដូចដើមរបស់បង
     font = QFont("Kantumruy Pro", 9)
     app.setFont(font)
     
     window = MainWindow()
     
-    # 🟢 បន្ថែមការហៅប្រើ icon.png នៅលើ Taskbar និង Window Title Bar
-    # កូដនេះនឹងទាញយក icon.png ដែលនៅក្នុងសឺមី icons/ (icons/icon.png) តាមរយៈ function get_studio_icon ដែលមានស្រាប់
+    # 🟢 ប្រព័ន្ធត្រួតពិនិត្យការអាប់ដេត (Auto-Update Engine)
+    def check_for_updates():
+        window.updater = AutoUpdater()
+        
+        def on_update_found(latest_ver, url):
+            # ប្តូរ url ទៅជា Link Raw ត្រឹមត្រូវរបស់បង Vathana ករណីដាក់ឈ្មោះខុសក្នុង JSON
+            correct_raw_url = "https://raw.githubusercontent.com/Vathana-devkh/AK-Digital-Tool-PRO-STUDIO/main/main.py"
+            
+            reply = QMessageBox.question(
+                window, 
+                "រកឃើញកំណែទម្រង់ថ្មី! (Update Available)", 
+                f"កម្មវិធីមាន Version ថ្មី ({latest_ver})។ តើអ្នកចង់អាប់ដេតឡើយទេ?",
+                QMessageBox.Yes | QMessageBox.No
+            )
+            if reply == QMessageBox.Yes:
+                if execute_update(correct_raw_url):
+                    QMessageBox.information(window, "ជោគជ័យ", "ការអាប់ដេតបានជោគជ័យ! កម្មវិធីនឹងបិទដើម្បីអនុវត្តកូដថ្មី។")
+                    sys.exit(0) 
+                else:
+                    QMessageBox.critical(window, "កំហុស", "ការទាញយកកូដថ្មីមានបញ្ហា។")
+                    
+        window.updater.update_available.connect(on_update_found)
+        window.updater.start()
+
+    # ហៅឱ្យដំណើរការពិនិត្យ Update បន្ទាប់ពីបើកកម្មវិធីបាន ២ វិនាទី
+    QTimer.singleShot(2000, check_for_updates)
+
+    # កំណត់ Icon ឱ្យ Window & Taskbar
     app_icon = get_studio_icon("icon")
     if not app_icon.isNull():
         window.setWindowIcon(app_icon)
