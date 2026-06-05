@@ -431,25 +431,26 @@ class FfmpegSettingsDialog(QDialog):
 # =====================================================================
 class AutoUpdater(QThread):
     update_available = Signal(str, str) # បញ្ជូន (latest_version, download_url)
+    no_update_found = Signal()          # បញ្ជូនសញ្ញានៅពេលដែលកម្មវិធីជា Version ចុងក្រោយហើយ
     
     def run(self):
         try:
-            # ទាញយកទិន្នន័យ JSON ពី GitHub មកពិនិត្យ
             req = urllib.request.Request(VERSION_URL, headers={'User-Agent': 'Mozilla/5.0'})
             with urllib.request.urlopen(req, timeout=5) as response:
                 data = json.loads(response.read().decode('utf-8'))
-                latest_version = data.get("version", "1.0.0") # យកតាមសោរ "version" ក្នុង JSON របស់បង
+                latest_version = data.get("version", "1.0.0")
                 download_url = data.get("download_url", "")
                 
-                # ប្រៀបធៀប Version បើថ្មីជាង នឹងប្រាប់ទៅកម្មវិធី
+                # បើ Version លើ GitHub ថ្មីជាង នឹងផ្ញើ Signal ទៅឱ្យដំឡើង
                 if latest_version > CURRENT_VERSION:
                     self.update_available.emit(latest_version, download_url)
+                else:
+                    self.no_update_found.emit()
         except Exception as e:
             print(f"ពិនិត្យការអាប់ដេតមិនជោគជ័យ: {e}")
 
 def execute_update(download_url):
     try:
-        # ទាញយកកូដថ្មីមកសរសេរជាន់លើ file main.py ដើម
         current_file = os.path.abspath(__file__)
         req = urllib.request.Request(download_url, headers={'User-Agent': 'Mozilla/5.0'})
         with urllib.request.urlopen(req, timeout=10) as response:
@@ -863,9 +864,42 @@ class MainWindow(QMainWindow):
             self.console_log.append("⚙️ [SYSTEM] FFmpeg Command configurations updated successfully.")
 
     def trigger_github_update(self):
-        self.console_log.append("📡 [UPDATE CORE] Pinging repository target link: git@github.com:NoyVathana/AI-Video-Loop-Generator...")
-        self.console_log.append("🔄 Checking manifest local build signature against server payload...")
-        QMessageBox.information(self, "System Update Routing", "កូដកម្មវិធីបច្ចុប្បន្នជាជំនាន់ចុងក្រោយបង្អស់ (Latest Build Version v2.5.0 Alpha) រួចរាល់ហើយបាទ។")
+        # ១. បង្ហាញអក្សរនៅលើ Status Bar ខាងក្រោមកម្មវិធីឱ្យ User ដឹងថា កំពុងស្កែន
+        self.statusBar().showMessage("កំពុងពិនិត្យមើលកំណែទម្រង់ថ្មីពី GitHub...", 5000)
+        
+        # ២. បង្កើត Thread សម្រាប់ទៅអានទិន្នន័យពី GitHub background
+        self.updater = AutoUpdater()
+        
+        # ករណី៖ រកឃើញ Version ថ្មីខ្ពស់ជាងក្នុងម៉ាស៊ីន
+        def on_update_found(latest_ver, url):
+            correct_raw_url = "https://raw.githubusercontent.com/Vathana-devkh/AK-Digital-Tool-PRO-STUDIO/refs/heads/main/main.py"
+            
+            reply = QMessageBox.question(
+                self, 
+                "រកឃើញកំណែទម្រង់ថ្មី!", 
+                f"កម្មវិធីមាន Version ថ្មី ({latest_ver})។ តើអ្នកចង់អាប់ដេតឡើយទេ?",
+                QMessageBox.Yes | QMessageBox.No
+            )
+            if reply == QMessageBox.Yes:
+                self.statusBar().showMessage("កំពុងទាញយកកូដថ្មីពី GitHub សូមរង់ចាំ...", 10000)
+                if execute_update(correct_raw_url):
+                    QMessageBox.information(self, "ជោគជ័យ", "ការអាប់ដេតបានជោគជ័យ! កម្មវិធីនឹងបិទដើម្បីអនុវត្តកូដថ្មី។")
+                    sys.exit(0) # បិទកម្មវិធីភ្លាម
+                else:
+                    QMessageBox.critical(self, "កំហុស", "ការទាញយកកូដថ្មីមានបញ្ហា ឬការសរសេរឯកសារបរាជ័យ។")
+                    self.statusBar().clearMessage()
+        
+        # ករណី៖ ពិនិត្យទៅឃើញកូដក្នុងម៉ាស៊ីនជា Version ចុងក្រោយបង្អស់ហើយ (គ្មាន Update ទេ)
+        def on_no_update():
+            QMessageBox.information(self, "ព័ត៌មាន", f"កម្មវិធីរបស់អ្នកជាកំណែទម្រង់ចុងក្រោយបង្អស់ហើយ ({CURRENT_VERSION})។")
+            self.statusBar().showMessage("កម្មវិធីជាជំនាន់ចុងក្រោយបង្អស់ហើយ។", 3000)
+
+        # ភ្ជាប់ Signals ទៅកាន់ Functions ខាងលើ
+        self.updater.update_available.connect(on_update_found)
+        self.updater.no_update_found.connect(on_no_update)
+        
+        # ចាប់ផ្ដើមដំណើរការស្កែន
+        self.updater.start()
 
     def show_about_guide(self):
         QMessageBox.information(self, "របៀបប្រើប្រាស់ (User Guide)", "១. ទាញទម្លាក់វីដេអូ ឬ Alpha Mask ចូលទៅក្នុង Lanes នីមួយៗ\n២. កំណត់ម៉ោងលេង (Playtime Vector) និងទំហំ (Resolution)\n៣. បញ្ចូលសំឡេងផ្ទៃក្រោយ ឬសំឡេងបរិយាកាស (Optional)\n៤. ចុចប៊ូតុង INITIALIZE SYSTEM CORE ដើម្បីចាប់ផ្ដើមផលិត។")
@@ -1094,6 +1128,7 @@ class MainWindow(QMainWindow):
             self.console_log.append(f"\n❌ [TERMINAL_CRASH] CORRUPTION DETECTED IN PIPELINE EXPORT: {message}")
 
 if __name__ == "__main__":
+    # កំណត់ AppUserModelID ដើម្បីឱ្យ Windows បង្ហាញ Icon ផ្ទាល់ខ្លួននៅលើ Taskbar
     try:
         import ctypes
         myappid = 'akdigital.prostudio.version.1.0' 
@@ -1102,34 +1137,14 @@ if __name__ == "__main__":
         pass
 
     app = QApplication(sys.argv)
+    
+    # កំណត់ពុម្ពអក្សរ Kantumruy Pro 9 ដូចដើមរបស់បង
     font = QFont("Kantumruy Pro", 9)
     app.setFont(font)
     
     window = MainWindow()
-    def check_for_updates():
-        window.updater = AutoUpdater()
-        
-        def on_update_found(latest_ver, url):
-            correct_raw_url = "https://raw.githubusercontent.com/Vathana-devkh/AK-Digital-Tool-PRO-STUDIO/main/main.py"
-            
-            reply = QMessageBox.question(
-                window, 
-                "រកឃើញកំណែទម្រង់ថ្មី! (Update Available)", 
-                f"កម្មវិធីមាន Version ថ្មី ({latest_ver})។ តើអ្នកចង់អាប់ដេតឡើយទេ?",
-                QMessageBox.Yes | QMessageBox.No
-            )
-            if reply == QMessageBox.Yes:
-                if execute_update(correct_raw_url):
-                    QMessageBox.information(window, "ជោគជ័យ", "ការអាប់ដេតបានជោគជ័យ! កម្មវិធីនឹងបិទដើម្បីអនុវត្តកូដថ្មី។")
-                    sys.exit(0) 
-                else:
-                    QMessageBox.critical(window, "កំហុស", "ការទាញយកកូដថ្មីមានបញ្ហា។")
-                    
-        window.updater.update_available.connect(on_update_found)
-        window.updater.start()
-    QTimer.singleShot(2000, check_for_updates)
 
-    # កំណត់ Icon ឱ្យ Window & Taskbar
+    # កំណត់ Icon ឱ្យ Window & Taskbar (icons/icon.png)
     app_icon = get_studio_icon("icon")
     if not app_icon.isNull():
         window.setWindowIcon(app_icon)
