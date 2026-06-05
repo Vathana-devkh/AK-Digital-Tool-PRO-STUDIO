@@ -842,7 +842,7 @@ class MainWindow(QMainWindow):
         
         # 4. UPDATE MENU
         update_menu = menubar.addMenu("Update")
-        act_git = QAction("Fetch Latest GitHub Version", self)
+        act_git = QAction("Update New Version", self)
         act_git.triggered.connect(self.trigger_github_update)
         update_menu.addAction(act_git)
         
